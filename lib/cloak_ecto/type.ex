@@ -6,6 +6,7 @@ defmodule Cloak.Ecto.Type do
   defmacro __using__(opts) do
     vault = Keyword.fetch!(opts, :vault)
     label = opts[:label]
+    delay_decrypt = opts[:delay_decrypt]
 
     quote location: :keep do
       @behaviour Cloak.Ecto.Type
@@ -44,12 +45,16 @@ defmodule Cloak.Ecto.Type do
       end
 
       def load(value) do
-        with {:ok, value} <- decrypt(value) do
-          value = after_decrypt(value)
+        if unquote(delay_decrypt) do
           {:ok, value}
         else
-          _other ->
-            :error
+          with {:ok, value} <- decrypt(value) do
+            value = after_decrypt(value)
+            {:ok, value}
+          else
+            _other ->
+              :error
+          end
         end
       end
 
