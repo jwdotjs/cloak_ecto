@@ -5,6 +5,10 @@ defmodule Cloak.Ecto.BinaryTest do
     use Cloak.Ecto.Binary, vault: Cloak.Ecto.TestVault
   end
 
+  defmodule DelayedDecryptionField do
+    use Cloak.Ecto.Binary, vault: Cloak.Ecto.TestVault, delay_decrypt: true
+  end
+
   @invalid_types [%{}, 123, 123.33, []]
 
   describe ".type/0" do
@@ -50,6 +54,23 @@ defmodule Cloak.Ecto.BinaryTest do
     test "decrypts the ciphertext" do
       {:ok, ciphertext} = Field.dump("value")
       assert {:ok, "value"} = Field.load(ciphertext)
+    end
+  end
+
+  describe "delay_decrypt" do
+    test "delays decryption on DelayedDecryptionField.load if delay_decrypt specified" do
+      {:ok, ciphertext} = DelayedDecryptionField.dump("value")
+      assert {:ok, loaded_value} = DelayedDecryptionField.load(ciphertext)
+
+      assert loaded_value == ciphertext
+    end
+
+    test "value can still be decrypted later" do
+      {:ok, ciphertext} = DelayedDecryptionField.dump("value")
+
+      decrypted_value = Cloak.Ecto.TestVault.decrypt!(ciphertext)
+
+      assert decrypted_value == "value"
     end
   end
 end
